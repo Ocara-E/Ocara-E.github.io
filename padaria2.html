@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PADARIA TRINDADE - Sistema </title>
+    <style>
+        :root {
+            --primary: #d4a373;
+            --dark: #1a110a;
+            --card: #2d1e14;
+            --text: #f5e6c8;
+            --success: #4caf50;
+            --danger: #e53935;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background-color: var(--dark);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .main-content {
+            flex: 3;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .search-bar {
+            padding: 15px;
+            background: var(--card);
+            border-radius: 12px;
+            border: 1px solid #4e342e;
+            color: white;
+            font-size: 1.1rem;
+            margin-bottom: 20px;
+            width: 100%;
+            outline: none;
+        }
+
+        .grid-produtos {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(165px, 1fr));
+            gap: 15px;
+        }
+
+        .produto-card {
+            background: var(--card);
+            border-radius: 12px;
+            padding: 15px;
+            text-align: center;
+            border: 1px solid #4e342e;
+            transition: 0.3s;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .produto-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-4px);
+        }
+
+        .promo-badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: #4caf50;
+            color: white;
+            font-size: 9px;
+            padding: 2px 7px;
+            border-radius: 12px;
+            font-weight: bold;
+        }
+
+        .preco {
+            font-weight: bold;
+            margin: 8px 0;
+            color: white;
+        }
+
+        .qty-input {
+            width: 100%;
+            background: rgba(0,0,0,0.4);
+            border: 1px solid #4e342e;
+            color: white;
+            padding: 8px;
+            border-radius: 6px;
+            text-align: center;
+            margin: 8px 0;
+        }
+
+        .btn-add {
+            width: 100%;
+            padding: 10px;
+            background: var(--primary);
+            color: #111;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            flex: 1;
+            background: #251810;
+            border-left: 3px solid var(--primary);
+            display: flex;
+            flex-direction: column;
+            min-width: 380px;
+        }
+
+        .carrinho-header {
+            padding: 20px;
+            border-bottom: 1px solid #4e342e;
+            font-weight: bold;
+            color: var(--primary);
+            font-size: 1.25rem;
+            text-align: center;
+        }
+
+        .lista-itens {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+        }
+
+        .item-linha {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px;
+            background: rgba(255,255,255,0.06);
+            border-radius: 8px;
+            margin-bottom: 10px;
+            font-size: 1rem;
+        }
+
+        .resumo-venda {
+            padding: 20px;
+            background: #1a110a;
+            border-top: 2px solid var(--primary);
+        }
+
+        .total-valor {
+            font-size: 2.6rem;
+            color: var(--primary);
+            font-weight: bold;
+            margin: 15px 0;
+            text-align: right;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-bottom: 10px;
+            font-size: 1.05rem;
+        }
+
+        .btn-finalizar { background: var(--success); color: white; }
+        .btn-limpar { background: #4e342e; color: white; }
+        .btn-sangria { background: var(--danger); color: white; }
+        .btn-suprimento { background: #2196f3; color: white; }
+
+        /* ==================== CUPOM TÉRMICO ==================== */
+        #cupom { display: none; }
+
+        @media print {
+            body * { visibility: hidden; }
+            #cupom, #cupom * { visibility: visible; }
+            #cupom {
+                display: block !important;
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 80mm;
+                padding: 8mm 5mm;
+                color: #000;
+                background: #fff;
+                font-family: 'Courier New', Courier, monospace;
+                font-size: 12.5px;
+                line-height: 1.35;
+            }
+            .print-header { text-align: center; margin-bottom: 8px; }
+            .dashed { border-top: 1px dashed #000; margin: 8px 0; }
+            .print-item { display: flex; justify-content: space-between; margin: 3px 0; }
+            .print-total { font-size: 15px; font-weight: bold; text-align: right; margin: 10px 0; }
+            @page { margin: 0; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="main-content">
+    <input type="text" class="search-bar" id="busca" placeholder="🔍 Buscar produto..." oninput="gerarProdutos()">
+    <div class="grid-produtos" id="grade"></div>
+</div>
+
+<div class="sidebar">
+    <div class="carrinho-header">
+        🛒 VENDA Nº <span id="vendaID">1</span>
+    </div>
+    <div class="lista-itens" id="carrinho"></div>
+
+    <div class="resumo-venda">
+        <div style="display: flex; gap: 10px; margin-bottom: 12px;">
+            <input type="number" id="taxa" class="qty-input" placeholder="Taxa R$" step="0.01" oninput="atualizar()">
+            <input type="number" id="desconto" class="qty-input" placeholder="Desconto R$" step="0.01" oninput="atualizar()">
+        </div>
+
+        <select id="pagamento" class="qty-input" style="height: 48px;" onchange="atualizar()">
+            <option value="PIX">📱 PIX</option>
+            <option value="Dinheiro">💵 DINHEIRO</option>
+            <option value="Cartão">💳 CARTÃO DÉBITO</option>
+            <option value="Crédito">💳 CARTÃO CRÉDITO</option>
+        </select>
+
+        <div id="taxaCreditoInfo" style="color:#ff9800; text-align:right; margin:8px 0; display:none;">
+            + Taxa 3,86% Cartão Crédito
+        </div>
+
+        <div id="trocoContainer" style="background:rgba(76,175,80,0.15); border:1px solid #4caf50; border-radius:8px; padding:12px; margin:12px 0; display:none;">
+            <div>Valor Recebido</div>
+            <input type="number" id="valorRecebido" class="qty-input" step="0.01" placeholder="0,00" oninput="atualizar()">
+            <div style="margin-top:8px;">Troco</div>
+            <div style="font-size:1.8rem; font-weight:bold; color:#4caf50; text-align:right;">
+                R$ <span id="trocoValor">0,00</span>
+            </div>
+        </div>
+
+        <div class="total-valor">R$ <span id="totalVenda">0,00</span></div>
+
+        <button class="btn btn-finalizar" onclick="finalizarVenda()">FINALIZAR E IMPRIMIR</button>
+        <button class="btn btn-sangria" onclick="abrirSangria()">SANGRIA</button>
+        <button class="btn btn-suprimento" onclick="abrirSuprimento()">SUPRIMENTO</button>
+        <button class="btn btn-limpar" onclick="cancelarVenda()">LIMPAR CARRINHO</button>
+        <button class="btn" style="background:#555;" onclick="fecharCaixaTurno()">FECHAR CAIXA E EXPORTAR PLANILHA</button>
+    </div>
+</div>
+
+<!-- CUPOM TÉRMICO - Estilo igual ao que você enviou -->
+<div id="cupom">
+    <div class="print-header">
+        <b>PADARIA & CONFEITARIA TRINDADE</b><br>
+        --------------------------------<br>
+        VENDA Nº: <span id="p-id"></span><br>
+        DATA: <span id="p-data"></span><br>
+        --------------------------------
+    </div>
+    <div id="p-itens"></div>
+    <div class="dashed"></div>
+    <div id="p-ajustes"></div>
+    <div class="print-total">TOTAL: R$ <span id="p-total">0,00</span></div>
+    <div class="print-header">
+        <br>PAGAMENTO: <span id="p-pagto"></span><br>
+        --------------------------------<br>
+        OBRIGADO PELA PREFERENCIA!
+    </div>
+</div>
+
+<script>
+    const produtosBase = [
+        {nome: "Pão Francês", preco: 0.335, unidade: "un"},
+        {nome: "Pão Seda", preco: 0.335, unidade: "un"},
+        {nome: "Pão Carrapixo", preco: 0.335, unidade: "un"},
+        {nome: "Pão Carteira", preco: 0.335, unidade: "un"},
+        {nome: "Pão Coco", preco: 0.335, unidade: "un"},
+        {nome: "Pão de Goiabada", preco: 0.335, unidade: "un"},
+        {nome: "Pão Língua de Sogra", preco: 0.50, unidade: "un"},
+        {nome: "Mussarela", preco: 55.00, unidade: "kg"},
+        {nome: "Presunto", preco: 32.00, unidade: "kg"},
+        {nome: "Mortadela Defumada", preco: 45.00, unidade: "kg"},
+        {nome: "Café (Pacote)", preco: 18.00, unidade: "un"},
+        {nome: "Leite 1L", preco: 4.00, unidade: "un"},
+        {nome: "Salgado", preco: 2.50, unidade: "un"},
+        {nome: "Refrigerante 2L", preco: 6.50, unidade: "un"},
+        {nome: "Refrigerante 1L", preco: 6.00, unidade: "un"},
+        {nome: "Refrigerante 250ml", preco: 2.00, unidade: "un"},
+        {nome: "Italaquinho", preco: 2.00, unidade: "un"}
+    ];
+
+    const paesPromo = ["Pão Francês", "Pão Seda", "Pão Carrapixo", "Pão Carteira", "Pão Coco", "Pão de Goiabada"];
+    const TAXA_CREDITO = 0.0386;
+
+    let carrinho = [];
+    let movimentacoes = JSON.parse(localStorage.getItem('movimentacoes')) || [];
+    let vendaID = parseInt(localStorage.getItem('vendaID')) || 1;
+    let caixaAtual = parseFloat(localStorage.getItem('caixaAtual')) || 0;
+
+    function gerarProdutos() {
+        const busca = document.getElementById('busca').value.toLowerCase().trim();
+        const grade = document.getElementById('grade');
+        grade.innerHTML = '';
+
+        produtosBase.forEach(prod => {
+            if (prod.nome.toLowerCase().includes(busca)) {
+                const isKg = prod.unidade === 'kg';
+                const isPromo = paesPromo.includes(prod.nome);
+
+                grade.innerHTML += `
+                    <div class="produto-card" onclick="addRapido('${prod.nome}')">
+                        ${isPromo ? '<div class="promo-badge">3un</div>' : ''}
+                        <h4>${prod.nome}</h4>
+                        <div class="preco">R$ ${prod.preco.toFixed(2)}${isKg ? '/kg' : ''}</div>
+                        <input type="number" step="${isKg ? '0.001' : '1'}" id="qty_${prod.nome.replace(/ /g,'_')}" 
+                               class="qty-input" placeholder="${isKg ? 'Kg' : 'Qtd'}" onclick="event.stopPropagation()">
+                        <button class="btn-add" onclick="event.stopPropagation(); addCarrinho('${prod.nome}')">ADICIONAR</button>
+                    </div>`;
+            }
+        });
+    }
+
+    function addCarrinho(nome) {
+        const input = document.getElementById(`qty_${nome.replace(/ /g,'_')}`);
+        let qtd = parseFloat(input ? input.value : 1) || 1;
+        adicionarItem(nome, qtd);
+        if (input) input.value = '';
+        atualizar();
+    }
+
+    function addRapido(nome) {
+        let qtd = paesPromo.includes(nome) ? 3 : 1;
+        if (nome === "Pão Língua de Sogra") qtd = 2;
+        adicionarItem(nome, qtd);
+        atualizar();
+    }
+
+    function adicionarItem(nome, qtd) {
+        const prod = produtosBase.find(p => p.nome === nome);
+        if (!prod) return;
+
+        const existente = carrinho.find(item => item.nome === nome);
+        if (existente) {
+            existente.val += qtd;
+            existente.total = existente.val * existente.precoUnit;
+        } else {
+            carrinho.push({
+                nome: prod.nome,
+                val: qtd,
+                isKg: prod.unidade === 'kg',
+                precoUnit: prod.preco,
+                total: qtd * prod.preco
+            });
+        }
+    }
+
+    function atualizar() {
+        const div = document.getElementById('carrinho');
+        div.innerHTML = '';
+
+        let somaProdutos = 0;
+        let qtdPaesPromo = 0;
+
+        carrinho.forEach((item, i) => {
+            if (paesPromo.includes(item.nome) && !item.isKg) qtdPaesPromo += item.val;
+            else somaProdutos += item.total;
+
+            div.innerHTML += `
+                <div class="item-linha">
+                    <span><b>${item.isKg ? item.val.toFixed(3) : item.val} ${item.isKg ? 'kg' : 'un'}</b> ${item.nome}</span>
+                    <span>R$ ${item.total.toFixed(2)} <button onclick="removerItem(${i})" style="color:#e53935;background:none;border:none;cursor:pointer;">×</button></span>
+                </div>`;
+        });
+
+        const totalPromo = Math.floor(qtdPaesPromo / 3) * 1 + (qtdPaesPromo % 3 * 0.335);
+        let subtotal = somaProdutos + totalPromo 
+                       + (parseFloat(document.getElementById('taxa').value)||0) 
+                       - (parseFloat(document.getElementById('desconto').value)||0);
+
+        const pag = document.getElementById('pagamento').value;
+        let totalFinal = subtotal;
+
+        if (pag === "Crédito") {
+            totalFinal += subtotal * TAXA_CREDITO;
+            document.getElementById('taxaCreditoInfo').style.display = 'block';
+        } else {
+            document.getElementById('taxaCreditoInfo').style.display = 'none';
+        }
+
+        if (pag === "Dinheiro") totalFinal = Math.round(totalFinal * 20) / 20;
+
+        document.getElementById('totalVenda').innerText = totalFinal.toFixed(2);
+
+        // Troco
+        const trocoDiv = document.getElementById('trocoContainer');
+        if (pag === "Dinheiro") {
+            trocoDiv.style.display = 'block';
+            const recebido = parseFloat(document.getElementById('valorRecebido').value) || 0;
+            document.getElementById('trocoValor').innerText = Math.max(0, recebido - totalFinal).toFixed(2);
+        } else {
+            trocoDiv.style.display = 'none';
+        }
+
+        document.getElementById('caixaAtual').innerText = caixaAtual.toFixed(2); // se quiser mostrar
+    }
+
+    function removerItem(i) {
+        carrinho.splice(i, 1);
+        atualizar();
+    }
+
+    function finalizarVenda() {
+        if (carrinho.length === 0) return alert("Carrinho vazio!");
+
+        const total = parseFloat(document.getElementById('totalVenda').innerText);
+        const agora = new Date();
+        const pagto = document.getElementById('pagamento').value;
+
+        let pagInfo = pagto;
+        if (pagto === "Crédito") pagInfo += " (+3,86%)";
+        if (pagto === "Dinheiro") {
+            const rec = parseFloat(document.getElementById('valorRecebido').value) || total;
+            const troco = rec - total;
+            if (troco > 0) pagInfo += ` | Troco R$ ${troco.toFixed(2)}`;
+        }
+
+        // Preenche cupom no estilo que você enviou
+        document.getElementById('p-id').innerText = vendaID;
+        document.getElementById('p-data').innerText = agora.toLocaleString('pt-BR');
+        document.getElementById('p-pagto').innerText = pagInfo;
+        document.getElementById('p-total').innerText = total.toFixed(2);
+
+        let itensHTML = '';
+        carrinho.forEach(item => {
+            const q = item.isKg ? item.val.toFixed(3) + 'kg' : item.val + 'un';
+            itensHTML += `<div class="print-item"><span>${q} ${item.nome}</span><span>${item.total.toFixed(2)}</span></div>`;
+        });
+        document.getElementById('p-itens').innerHTML = itensHTML;
+
+        window.print();   // Impressão térmica
+
+        // Registra
+        movimentacoes.push({
+            tipo: "Venda",
+            id: vendaID,
+            valor: total,
+            pagamento: pagto,
+            data: agora.toLocaleString('pt-BR')
+        });
+
+        caixaAtual += total;
+        localStorage.setItem('caixaAtual', caixaAtual);
+        vendaID++;
+        localStorage.setItem('vendaID', vendaID);
+        localStorage.setItem('movimentacoes', JSON.stringify(movimentacoes));
+
+        cancelarVenda();
+        document.getElementById('vendaID').innerText = vendaID;
+    }
+
+    function cancelarVenda() {
+        carrinho = [];
+        document.getElementById('taxa').value = '';
+        document.getElementById('desconto').value = '';
+        document.getElementById('valorRecebido').value = '';
+        atualizar();
+    }
+
+    function abrirSangria() {
+        const valor = parseFloat(prompt("Valor da SANGRIA:"));
+        if (!valor || valor <= 0) return;
+        const motivo = prompt("Motivo:") || "";
+        if (confirm(`Sangria de R$ ${valor.toFixed(2)}?`)) {
+            movimentacoes.push({ tipo: "Sangria", valor: -valor, motivo, data: new Date().toLocaleString('pt-BR') });
+            caixaAtual -= valor;
+            localStorage.setItem('caixaAtual', caixaAtual);
+            localStorage.setItem('movimentacoes', JSON.stringify(movimentacoes));
+            alert("Sangria registrada!");
+            atualizar();
+        }
+    }
+
+    function abrirSuprimento() {
+        const valor = parseFloat(prompt("Valor do SUPRIMENTO:"));
+        if (!valor || valor <= 0) return;
+        const motivo = prompt("Motivo:") || "";
+        if (confirm(`Suprimento de R$ ${valor.toFixed(2)}?`)) {
+            movimentacoes.push({ tipo: "Suprimento", valor: valor, motivo, data: new Date().toLocaleString('pt-BR') });
+            caixaAtual += valor;
+            localStorage.setItem('caixaAtual', caixaAtual);
+            localStorage.setItem('movimentacoes', JSON.stringify(movimentacoes));
+            alert("Suprimento registrado!");
+            atualizar();
+        }
+    }
+
+    function fecharCaixaTurno() {
+        if (movimentacoes.length === 0) return alert("Não há movimentações.");
+
+        if (!confirm("Fechar caixa e exportar planilha completa?")) return;
+
+        let totalVendas = 0, totalSangrias = 0, totalSuprimentos = 0;
+        let csv = "TIPO;ID;VALOR;PAGAMENTO/MOTIVO;DATA/HORA\n";
+
+        movimentacoes.forEach(m => {
+            csv += `${m.tipo};${m.id || ''};${m.valor.toFixed(2).replace('.',',')};${m.pagamento || m.motivo || ''};${m.data}\n`;
+            if (m.tipo === "Venda") totalVendas += m.valor;
+            else if (m.tipo === "Sangria") totalSangrias += Math.abs(m.valor);
+            else if (m.tipo === "Suprimento") totalSuprimentos += m.valor;
+        });
+
+        const saldoFinal = totalVendas + totalSuprimentos + totalSangrias;
+
+        csv += `\nRESUMO DO DIA\n`;
+        csv += `Total Vendas;;${totalVendas.toFixed(2).replace('.',',')};;\n`;
+        csv += `Total Suprimentos;;${totalSuprimentos.toFixed(2).replace('.',',')};;\n`;
+        csv += `Total Sangrias;;${totalSangrias.toFixed(2).replace('.',',')};;\n`;
+        csv += `SALDO FINAL;;${saldoFinal.toFixed(2).replace('.',',')};;\n`;
+
+        const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = `FECHAMENTO_TRINDADE_${new Date().toLocaleDateString('pt-BR').replace(/\//g,'-')}.csv`;
+        a.click();
+
+        if (confirm("Planilha exportada!\nZerar caixa para novo dia?")) {
+            localStorage.clear();
+            location.reload();
+        }
+    }
+
+    // Inicialização
+    window.onload = () => {
+        gerarProdutos();
+        document.getElementById('vendaID').innerText = vendaID;
+        atualizar();
+    };
+</script>
+</body>
+</html>
