@@ -1,0 +1,670 @@
+<!doctype html>
+<html lang="pt-br">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PDV - PADARIA TRINDADE </title>
+    <link rel="stylesheet" href="style.css"></link>
+    <link rel="php" href="server.php"></link>
+  </head>
+  <body>
+    <div id="indicator" class="indicator"></div>
+    <div id="debugLog" class="debug-log"></div>
+
+    <div class="atalhos-bar">
+      <span><kbd>F2</kbd> Foco Scanner</span>
+      <span><kbd>F10</kbd> Finalizar</span>
+      <span><kbd>F12</kbd> Config</span>
+      <span><kbd>ESC</kbd> Fechar</span>
+    </div>
+
+    <!-- MAIN -->
+    <div class="main-content">
+      <!-- HEADER -->
+      <div class="header">
+        <div class="logo" onclick="abrirModal('modalSobre')">
+          🥖 PADARIA TRINDADE  
+          
+        </div><div id="visor">00:00:00</div>
+        <div class="header-actions">
+          <button
+            class="btn-hdr btn-balanca"
+            id="btnBalanca"
+            onclick="conectarBalanca()"
+          >
+            ⚖️ BALANÇA
+          </button>
+          <button class="btn-hdr btn-cad" onclick="abrirCadastroProduto()">
+            ➕ PRODUTO
+          </button>
+          <button class="btn-hdr" style="background:linear-gradient(135deg,#0ea5e9,#0369a1)" onclick="abrirEstoque()">
+            📦 ESTOQUE
+          </button>
+          <button class="btn-hdr btn-hist" onclick="abrirHistorico()">
+            📋 HISTÓRICO
+          </button>
+          <button class="btn-hdr btn-config" onclick="abrirConfiguracoes()">
+            ⚙️ CONFIG
+          </button>
+          <button
+            class="btn-hdr"
+            style="background: #333"
+            onclick="toggleDebug()"
+          >
+            🐞
+          </button>
+<button id="btnReset" style="background-color: #ff5100; color: white; border: none; padding: 10px 20px; cursor: pointer;">
+    🔄 RESET
+</button>
+        </div>
+      </div>
+
+      <!-- SCANNER -->
+      <div class="scanner-box" id="scannerBox">
+        <div class="scanner-label">
+          <span class="scanner-dot" id="scannerDot"></span>
+          SCANNER / CÓDIGO DE BARRAS
+        </div>
+        <input
+          type="text"
+          class="scanner-input"
+          id="scannerInput"
+          placeholder="🔍  Escaneie ou digite o código do produto..."
+          autocomplete="off"
+          autofocus
+          onkeydown="scannerKeyDown(event)"
+        />
+        <div class="scanner-hint">
+          <span>📦 Código de barras</span>
+          <span>⌨️ Digite e pressione Enter</span>
+          <span>🔄 Aguardando leitura...</span>
+        </div>
+      </div>
+
+      <!-- BALANÇA -->
+      <div class="balanca-bar" id="balancaBar">
+        <div>
+          <div class="balanca-peso" id="balancaPesoDisplay">0.000 kg</div>
+          <div class="balanca-info" id="balancaInfo">
+            Balança desconectada — clique em BALANÇA para conectar
+          </div>
+        </div>
+        <div class="balanca-actions">
+          <button
+            class="btn-usar-peso"
+            id="btnUsarPeso"
+            onclick="adicionarPesoManual()"
+          >
+            ⚖️ USAR PESO
+          </button>
+        </div>
+        <div class="balanca-pesagem" id="pesagemInline">
+          <span class="pesagem-produto" id="pesagemProdutoNome"></span>
+          <input
+            type="text"
+            class="pesagem-input"
+            id="pesagemInput"
+            placeholder="0,000"
+            onkeydown="if (event.key === 'Enter') confirmarPesoInline();"
+          />
+          <span style="color: var(--primary); font-size: 0.9rem">kg</span>
+          <button class="btn-confirmar-peso" onclick="confirmarPesoInline()">
+            ✅ OK
+          </button>
+          <button class="btn-cancelar-peso" onclick="cancelarPesagem()">
+            ✕
+          </button>
+        </div>
+      </div>
+
+      <!-- ATALHOS RÁPIDOS -->
+      <div class="atalhos-section">
+        <div class="atalhos-title">⚡ Acesso Rápido</div>
+        <div class="atalhos-tabs" id="atalhosTabs"></div>
+        <div class="atalhos-grid" id="atalhosBtns"></div>
+      </div>
+    </div>
+
+    <!-- SIDEBAR / CARRINHO -->
+    <div class="sidebar">
+      <div class="carrinho-header">
+        <div class="carrinho-header-title">
+          🛒 VENDA Nº <span id="vendaID">1</span>
+        </div>
+        <div class="carrinho-badge"><span id="carrinhoQtd">0</span> itens</div>
+      </div>
+
+      <div class="lista-itens" id="carrinho">
+        <div class="empty-cart">
+          <div class="icon">🧺</div>
+          <p>Carrinho vazio</p>
+          <p style="font-size: 0.8rem; margin-top: 4px">
+            Escaneie ou clique em um<br />produto de acesso rápido
+          </p>
+        </div>
+      </div>
+
+      <div class="resumo-venda">
+        <div class="resumo-linha">
+          <span>Subtotal:</span><span id="subtotalValor">R$ 0,00</span>
+        </div>
+        <div class="resumo-linha" id="taxaLinha" style="display: none">
+          <span>Taxa:</span><span id="taxaValorResumo">R$ 0,00</span>
+        </div>
+        <div class="resumo-linha" id="descontoLinha" style="display: none">
+          <span>Desconto:</span><span id="descontoValorResumo">-R$ 0,00</span>
+        </div>
+        <div
+          class="resumo-linha destaque"
+          id="creditoLinha"
+          style="display: none"
+        >
+          <span>Taxa Crédito:</span><span id="creditoValorResumo">R$ 0,00</span>
+        </div>
+
+        <div class="resumo-inputs">
+          <input
+            type="text"
+            class="resumo-input"
+            id="taxa"
+            placeholder="+ Taxa R$"
+            oninput="atualizar()"
+          />
+          <input
+            type="text"
+            class="resumo-input"
+            id="desconto"
+            placeholder="- Desconto R$"
+            oninput="atualizar()"
+          />
+        </div>
+
+        <select class="pag-select" id="pagamento" onchange="mudouPagamento()">
+          <option value="PIX">📲 PIX</option>
+          <option value="Dinheiro">💵 DINHEIRO</option>
+          <option value="Cartão">💳 CARTÃO DÉBITO</option>
+          <option value="Crédito">💳 CARTÃO CRÉDITO</option>
+        </select>
+
+        <div id="pixAguardandoInfo" class="pix-status">
+          📱 QR Code gerado — aguardando pagamento
+        </div>
+        <div id="pixConfirmadoInfo" class="pix-status">✅ PIX confirmado!</div>
+
+        <div id="trocoContainer">
+          <div class="troco-row">
+            <div>
+              <div class="troco-label">💵 Valor Recebido</div>
+              <div class="troco-val">
+                Troco: R$ <span id="trocoValor">0,00</span>
+              </div>
+            </div>
+            <input
+              type="text"
+              class="troco-input"
+              id="valorRecebido"
+              placeholder="0,00"
+              oninput="calcularTroco()"
+            />
+          </div>
+        </div>
+
+        <div class="total-valor">R$ <span id="totalVenda">0,00</span></div>
+
+        <div class="botoes-grid">
+          <button class="btn-venda btn-fin" onclick="finalizarVenda()">
+            ✅ FINALIZAR (F10)
+          </button>
+          <button class="btn-venda btn-pix-g" onclick="gerarPixManual()">
+            📲 PIX
+          </button>
+          <button class="btn-venda" style="background:linear-gradient(135deg,#ec4899,#be185d);color:white;grid-column:span 0;" onclick="abrirMultiPagamento()">
+            💳 MÚLTIPLO
+          </button>
+          <button class="btn-venda btn-gav" onclick="abrirGaveta()">
+            🗄️ GAVETA
+          </button>
+          <button class="btn-venda btn-caixa" onclick="verTotalCaixa()">
+            💰 CAIXA
+          </button>
+          <button class="btn-venda btn-sang" onclick="iniciarSangria()">
+            ⬇️ SANGRIA
+          </button>
+          <button class="btn-venda btn-supr" onclick="iniciarSuprimento()">
+            ⬆️ SUPRIMENTO
+          </button>
+          <button class="btn-venda btn-limpar" onclick="iniciarCancelamento()">
+            🗑️ CANCELAR
+          </button>
+          <button class="btn-venda btn-fechar" onclick="iniciarFechamento()">
+            🔒 FECHAR
+          </button>
+          <button class="btn-venda btn-nota" onclick="imprimirUltimaNota()">
+            🖨️ REIMPRIME
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ MODAIS ============ -->
+
+    <!-- MODAL PIX -->
+    <div id="pixModalOverlay" class="pix-modal-overlay">
+      <div class="pix-modal">
+        <div class="pix-modal-title">📲 Pagamento via PIX</div>
+        <div class="pix-modal-total">
+          R$ <span id="pixValorModal">0,00</span>
+        </div>
+        <div id="pixQrcode"></div>
+        <textarea
+          id="pixCopiaCola"
+          readonly
+          placeholder="Código PIX"
+        ></textarea>
+        <div class="pix-modal-actions">
+          <button class="btn-pix-copy" onclick="copiarPix()">📋 COPIAR</button>
+          <button class="btn-pix-confirm" onclick="confirmarPixRecebido()">
+            ✅ CONFIRMAR
+          </button>
+          <button class="btn-pix-close" onclick="fecharModalPix()">
+            ❌ FECHAR
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL CONFIG -->
+    <div id="modalConfig" class="modal-overlay">
+      <div class="modal-box" style="width: min(95vw, 580px)">
+        <h3>⚙️ CONFIGURAÇÕES</h3>
+        <div class="config-section">
+          <h4>🔒 Segurança</h4>
+          <div class="config-row">
+            <label>Senha Atual:</label
+            ><input
+              type="password"
+              id="configSenhaAtual"
+              placeholder="******"
+            />
+          </div>
+          <div class="config-row">
+            <label>Nova Senha:</label
+            ><input type="password" id="configSenhaNova" placeholder="******" />
+          </div>
+        </div>
+        <div class="config-section">
+          <h4>📲 PIX</h4>
+          <div class="config-row">
+            <label>Chave PIX:</label
+            ><input
+              type="text"
+              id="configPixChave"
+              placeholder="Celular, CPF ou Email"
+            />
+          </div>
+          <div class="config-row">
+            <label>Nome Recebedor:</label
+            ><input type="text" id="configPixNome" placeholder="Nome" />
+          </div>
+          <div class="config-row">
+            <label>Cidade:</label
+            ><input type="text" id="configPixCidade" placeholder="Cidade" />
+          </div>
+        </div>
+        <div class="config-section">
+          <h4>🖨️ Impressão & Gaveta</h4>
+          <div class="config-row">
+            <label>Impressão Automática:</label>
+            <select id="configImpressaoAuto">
+              <option value="1">Ativada</option>
+              <option value="0">Desativada</option>
+            </select>
+          </div>
+          <div class="config-row">
+            <label>Abrir Gaveta (Dinheiro):</label>
+            <select id="configGavetaAuto">
+              <option value="1">Sim</option>
+              <option value="0">Não</option>
+            </select>
+          </div>
+        </div>
+        <div class="config-section">
+          <h4>📊 Taxas</h4>
+          <div class="config-row">
+            <label>Taxa Crédito (%):</label
+            ><input type="text" id="configTaxaCredito" placeholder="3,86" />
+          </div>
+        </div>
+        <div class="config-section">
+          <h4>💾 Backup de Dados</h4>
+          <div
+            style="
+              display: flex;
+              gap: 8px;
+              justify-content: center;
+              flex-wrap: wrap;
+            "
+          >
+            <button
+              class="btn-venda btn-supr"
+              onclick="exportarDados()"
+              style="padding: 10px 16px"
+            >
+              💾 Exportar
+            </button>
+            <button
+              class="btn-venda btn-caixa"
+              onclick="document.getElementById('importFile').click()"
+              style="padding: 10px 16px"
+            >
+              📂 Importar
+            </button>
+            <input
+              type="file"
+              id="importFile"
+              accept=".json"
+              style="display: none"
+              onchange="importarDados(event)"
+            />
+            <button
+              class="btn-venda btn-sang"
+              onclick="limparTudo()"
+              style="padding: 10px 16px"
+            >
+              🗑️ Limpar
+            </button>
+          </div>
+        </div>
+        <div class="modal-btns">
+          <button class="btn-cancelar" onclick="fecharModal('modalConfig')">
+            Cancelar
+          </button>
+          <button class="btn-confirmar" onclick="salvarConfiguracoes()">
+            💾 Salvar
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL HISTÓRICO -->
+    <div id="modalHistorico" class="modal-overlay">
+      <div class="modal-box" style="width: min(95vw, 620px)">
+        <h3>📋 HISTÓRICO DE MOVIMENTAÇÕES</h3>
+        <div class="historico-filtros">
+          <button class="active" onclick="filtrarHistorico('todos', this)">
+            Todos
+          </button>
+          <button onclick="filtrarHistorico('Venda', this)">Vendas</button>
+          <button onclick="filtrarHistorico('Sangria', this)">Sangrias</button>
+          <button onclick="filtrarHistorico('Suprimento', this)">
+            Suprimentos
+          </button>
+        </div>
+        <div class="historico-lista" id="historicoLista"></div>
+        <div class="modal-btns">
+          <button
+            class="btn-confirmar"
+            onclick="fecharModal('modalHistorico')"
+            style="flex: 1"
+          >
+            Fechar
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL CADASTRO -->
+    <div id="modalCadastroProduto" class="modal-overlay">
+      <div class="modal-box">
+        <h3>➕ CADASTRAR PRODUTO</h3>
+        <div class="form-group">
+          <label>Código de Barras:</label
+          ><input type="text" id="prodCodigo" placeholder="Ex: 7891234567890" />
+        </div>
+        <div class="form-group">
+          <label>Nome do Produto:</label
+          ><input type="text" id="prodNome" placeholder="Ex: Pão Francês" />
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Preço (R$):</label
+            ><input type="text" id="prodPreco" placeholder="0,00" />
+          </div>
+          <div class="form-group">
+            <label>Unidade:</label>
+            <select id="prodUnidade" onchange="cadastroCategoriaMudou()">
+              <option value="un">Unidade (un)</option>
+              <option value="kg">Quilograma (kg)</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Categoria:</label>
+          <select id="prodCategoria" onchange="cadastroCategoriaMudou()">
+            <option value="Pães">Pães</option>
+            <option value="Frios">Frios</option>
+            <option value="Bebidas">Bebidas</option>
+            <option value="Salgados">Salgados</option>
+            <option value="Bolos">Bolos</option>
+            <option value="Doces">Doces</option>
+            <option value="Outros">Outros</option>
+          </select>
+        </div>
+        <!-- Campos de estoque: ocultos quando categoria = Pães -->
+        <div class="form-row" id="cadastroEstoqueRow">
+          <div class="form-group">
+            <label>Estoque Inicial:</label>
+            <input type="number" id="prodEstoque" placeholder="Vazio = ilimitado" min="0" step="1" />
+          </div>
+          <div class="form-group">
+            <label>Estoque Mínimo:</label>
+            <input type="number" id="prodEstoqueMin" placeholder="Ex: 5" min="0" step="1" />
+          </div>
+        </div>
+        <div id="cadastroPaesAviso" style="display:none;padding:10px 14px;background:rgba(232,185,35,0.1);border:1px solid var(--primary);border-radius:10px;margin-bottom:10px;font-size:0.85rem;color:var(--primary);text-align:left;">
+          🍞 Produtos da categoria <strong>Pães</strong> não possuem controle de estoque — sempre disponíveis.
+        </div>
+        <div class="modal-btns">
+          <button
+            class="btn-cancelar"
+            onclick="fecharModal('modalCadastroProduto')"
+          >
+            Cancelar
+          </button>
+          <button class="btn-confirmar" onclick="cadastrarProduto()">
+            ✅ Cadastrar
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL CANCELAR -->
+    <div id="modalCancelar" class="modal-overlay">
+      <div class="modal-box">
+        <h3>🗑️ CANCELAR VENDA</h3>
+        <p class="info-text">Digite a senha para cancelar</p>
+        <input
+          type="password"
+          id="cancelarSenha"
+          maxlength="6"
+          placeholder="******"
+        />
+        <div class="modal-btns">
+          <button class="btn-cancelar" onclick="fecharModal('modalCancelar')">
+            Voltar
+          </button>
+          <button class="btn-confirmar" onclick="confirmarCancelamento()">
+            ✅ Confirmar
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL FECHAR -->
+    <div id="modalFechar" class="modal-overlay">
+      <div class="modal-box">
+        <h3>🔒 FECHAR CAIXA</h3>
+        <p class="info-text">Digite a senha para fechar o turno</p>
+        <input
+          type="password"
+          id="fecharSenha"
+          maxlength="6"
+          placeholder="******"
+        />
+        <div class="modal-btns">
+          <button class="btn-cancelar" onclick="fecharModal('modalFechar')">
+            Cancelar
+          </button>
+          <button class="btn-confirmar" onclick="confirmarFechamento()">
+            ✅ Confirmar
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL SOBRE -->
+    <div id="modalSobre" class="modal-overlay">
+      <div class="modal-box">
+        <h3>🥖 PADARIA TRINDADE</h3>
+        <div style="font-size: 3.5rem; margin: 16px 0">🏪</div>
+        <p style="color: #aaa; margin-bottom: 8px">
+          Sistema PDV Completo — v2.2
+        </p>
+        <p style="color: #666; font-size: 0.85rem">
+          Scanner USB + Balança Serial + Impressão
+        </p>
+        <div
+          style="
+            margin-top: 16px;
+            padding: 14px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            text-align: left;
+          "
+        >
+          <p
+            style="color: var(--primary); font-weight: 700; margin-bottom: 8px"
+          >
+            ✅ Funcionalidades:
+          </p>
+          <p style="color: #888; font-size: 0.85rem; line-height: 1.8">
+            • Scanner USB (Keyboard Wedge)<br />
+            • Balança Serial (Web Serial API)<br />
+            • Acesso rápido por categoria<br />
+            • PIX com QR Code automático na nota<br />
+            • Impressão automática de cupom<br />
+            • Cadastro de produtos<br />
+            • Backup / Restauração<br />
+            • Promoções automáticas (3 pães = R$1)<br />
+            • 💳 Pagamento Múltiplo Inteligente
+          </p>
+        </div>
+        <div class="modal-btns" style="margin-top: 16px">
+          <button
+            class="btn-confirmar"
+            onclick="fecharModal('modalSobre')"
+            style="flex: 1"
+          >
+            Fechar
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL ESTOQUE -->
+    <div id="modalEstoque" class="modal-overlay">
+      <div class="modal-box" style="width:min(95vw,700px)">
+        <h3>📦 CONTROLE DE ESTOQUE</h3>
+        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;justify-content:center;">
+          <select id="estoqueFiltroCat" onchange="renderizarEstoque()" style="padding:8px 12px;background:rgba(0,0,0,0.4);border:1px solid #3f2a1e;border-radius:10px;color:white;outline:none;">
+            <option value="">Todas as categorias</option>
+            <option>Pães</option><option>Frios</option><option>Bebidas</option>
+            <option>Salgados</option><option>Bolos</option><option>Doces</option><option>Outros</option>
+          </select>
+          <select id="estoqueFiltroBaixo" onchange="renderizarEstoque()" style="padding:8px 12px;background:rgba(0,0,0,0.4);border:1px solid #3f2a1e;border-radius:10px;color:white;outline:none;">
+            <option value="">Todos</option>
+            <option value="baixo">⚠️ Estoque baixo</option>
+            <option value="zero">❌ Sem estoque</option>
+            <option value="sem">Sem controle</option>
+          </select>
+        </div>
+        <div id="estoqueResumo" style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;justify-content:center;font-size:0.82rem;"></div>
+        <div id="estoqueLista" style="max-height:400px;overflow-y:auto;text-align:left;"></div>
+        <div class="modal-btns" style="margin-top:14px;">
+          <button class="btn-cancelar" onclick="fecharModal('modalEstoque')">Fechar</button>
+          <button class="btn-confirmar" onclick="exportarEstoque()">📊 Exportar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL PAGAMENTO MÚLTIPLO INTELIGENTE -->
+    <div id="modalMultiPag" class="modal-overlay">
+      <div class="modal-box" style="width:min(95vw,520px);text-align:left;">
+        <h3 style="text-align:center;">💳 PAGAMENTO MÚLTIPLO INTELIGENTE</h3>
+
+        <div class="multipag-total-box">
+          <div>
+            <div class="multipag-total-label">TOTAL DA VENDA</div>
+            <div class="multipag-total-val">R$ <span id="mpTotalVal">0,00</span></div>
+          </div>
+          <div style="text-align:right;">
+            <div class="multipag-total-label">PAGO ATÉ AGORA</div>
+            <div style="font-size:1.2rem;font-weight:800;color:#22c55e;font-family:'Courier New',monospace;">R$ <span id="mpPagoVal">0,00</span></div>
+          </div>
+        </div>
+
+        <div class="multipag-progress">
+          <div class="multipag-progress-bar" id="mpProgressBar" style="width:0%"></div>
+        </div>
+
+        <div class="multipag-restante-box tem-saldo" id="mpRestanteBox">
+          <span class="multipag-restante-label">💰 RESTANTE A PAGAR</span>
+          <span class="multipag-restante-val tem-saldo" id="mpRestanteVal">R$ 0,00</span>
+        </div>
+
+        <div class="multipag-lista" id="mpLista">
+          <div style="text-align:center;color:#555;padding:14px;font-size:0.85rem;">
+            Nenhuma forma de pagamento adicionada ainda
+          </div>
+        </div>
+
+        <div class="multipag-pix-qr" id="mpPixQr"></div>
+        <div id="mpPixCopiaCola" style="display:none;margin-bottom:8px;">
+          <textarea readonly id="mpPixCopiaColaInput" style="width:100%;height:52px;resize:none;font-size:0.75rem;background:rgba(0,0,0,0.4);border:1px solid #3b82f6;border-radius:8px;color:white;padding:8px;outline:none;"></textarea>
+          <button onclick="copiarPixMulti()" style="margin-top:4px;width:100%;padding:8px;background:#3b82f6;border:none;border-radius:8px;color:white;font-weight:700;cursor:pointer;">📋 COPIAR CÓDIGO PIX</button>
+        </div>
+
+        <div style="background:rgba(0,0,0,0.25);border-radius:12px;padding:12px;margin-top:4px;">
+          <div style="font-size:0.75rem;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">➕ Adicionar forma de pagamento</div>
+          <div class="multipag-add-row">
+            <select id="mpMetodo" onchange="mpMetodoMudou()">
+              <option value="PIX">📲 PIX</option>
+              <option value="Dinheiro">💵 DINHEIRO</option>
+              <option value="Cartão">💳 CARTÃO DÉBITO</option>
+              <option value="Crédito">💳 CARTÃO CRÉDITO</option>
+            </select>
+            <input type="text" id="mpValorInput" placeholder="R$ 0,00" oninput="mpAtualizarTroco()" />
+            <button class="btn-add-parcela" onclick="mpAdicionarParcela()">✅ ADD</button>
+          </div>
+          <div id="mpTrocoPreview" style="display:none;margin-top:8px;padding:8px 12px;background:rgba(34,197,94,0.08);border:1px solid #22c55e;border-radius:8px;font-size:0.85rem;">
+            💵 Troco estimado: <strong id="mpTrocoVal" style="color:#22c55e;">R$ 0,00</strong>
+          </div>
+        </div>
+
+        <button class="btn-multipag-fin" id="mpBtnFin" disabled onclick="mpFinalizarVenda()">
+          ✅ FINALIZAR VENDA COM PAGAMENTO MÚLTIPLO
+        </button>
+
+        <div class="modal-btns" style="margin-top:8px;">
+          <button class="btn-cancelar" onclick="mpCancelar()">❌ Cancelar</button>
+          <button class="btn-confirmar" style="background:#f59e0b;color:#111;" onclick="mpLimparParcelas()">🗑️ Limpar Tudo</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CUPOM -->
+    <div id="cupom-print"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<script src="script.js"></script>
